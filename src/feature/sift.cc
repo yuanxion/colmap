@@ -231,9 +231,13 @@ void FindNearestNeighborsFLANN(
   std::vector<float> distances_vector(query.rows() * num_nearest_neighbors);
   flann::Matrix<float> distances_matrix(distances_vector.data(), query.rows(),
                                         num_nearest_neighbors);
+  //flann::Index<flann::L2<uint8_t>> index(
+  //    database_matrix, flann::KDTreeIndexParams(kNumTreesInForest));
   flann::Index<flann::L2<uint8_t>> index(
-      database_matrix, flann::KDTreeIndexParams(kNumTreesInForest));
+      database_matrix, flann::KDTreeAVX2IndexParams(kNumTreesInForest));
+  LOG(INFO) << "[xy] buildIndex kNumTreesInForest: " << kNumTreesInForest;
   index.buildIndex();
+  LOG(INFO) << "[xy] call knnSearch...";
   index.knnSearch(query_matrix, indices_matrix, distances_matrix,
                   num_nearest_neighbors, flann::SearchParams(128));
 

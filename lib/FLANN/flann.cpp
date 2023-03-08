@@ -69,6 +69,12 @@ flann::IndexParams create_parameters(FLANNParameters* p)
         params["leaf_max_size"] = p->leaf_max_size;
     }
 #endif
+#ifdef FLANN_USE_AVX2
+    if (p->algorithm == FLANN_INDEX_KDTREE_AVX2) {
+        params["trees"] = p->trees;
+        params["leaf_max_size"] = p->leaf_max_size;
+    }
+#endif
 
     if (p->algorithm == FLANN_INDEX_KMEANS) {
         params["branching"] = p->branching;
