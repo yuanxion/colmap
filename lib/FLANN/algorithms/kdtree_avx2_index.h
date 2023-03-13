@@ -327,22 +327,19 @@ public:
                 printf("[xy] %s:%d %s\n", __FILE__, __LINE__, __func__);
         		//getNeighbors<false>(result, vec, maxChecks, epsError);
 
-                std::vector<std::thread> threads;
-                //std::vector<KNNSimpleResultSet<DistanceType>> results(trees_);
                 int knn = 2;
+                std::vector<std::thread> threads;
+                std::vector<KNNSimpleResultSet<DistanceType>> results;
+
                 for(int i=0; i<trees_; ++i) {
-                    //threads.emplace_back( std::thread(hello, std::ref(i)) );
-
-                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, std::ref(result), std::ref(vec), maxChecks, epsError) );
-                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(result), std::ref(vec), maxChecks, epsError) );
-                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(result), std::ref(vec), std::ref(maxChecks), std::ref(epsError)) );
-                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(results[std::ref(i)]), std::ref(vec), std::ref(maxChecks), std::ref(epsError)) );
                     KNNSimpleResultSet<DistanceType> res_t(knn);
-                    //results.emplace_back(res_t);
-                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(res_t), std::ref(vec), std::ref(maxChecks), std::ref(epsError)) );
-
-                    //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(res_t), std::ref(vec), std::ref(maxChecks), std::ref(epsError), std::ref(i)) );
-                    threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(res_t), std::ref(vec), std::ref(maxChecks), std::ref(epsError), std::ref(i)) );
+                    results.emplace_back(res_t);
+                }
+                for(int i=0; i<trees_; ++i) {
+                    //threads.emplace_back( hello, i );
+                    //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(results[i]), std::ref(vec), maxChecks, epsError, i) );
+                    //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(results[i]), vec, maxChecks, epsError, reinterpret_cast<void*>(i)) );
+                    threads.emplace_back( &KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(results[i]), vec, maxChecks, epsError, reinterpret_cast<void*>(i) );
                 }
                 for(int i=0; i<trees_; ++i) {
                     threads[i].join();
@@ -686,23 +683,27 @@ private:
 
     template<bool with_removed>
     //static void getNeighbors_thread(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError) {
-    void getNeighbors_thread(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError, int tid) const
+    //void getNeighbors_thread(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError, int idx) const
+    void getNeighbors_thread(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError, void *idx) const
     {
-        printf("[xy] %s:%d %s, result.size, maxCheck %d epsError %f, tid %d\n", __FILE__, __LINE__, __func__, maxCheck, epsError, tid);
-        return;
+        int thread_index = (long)idx;
+        std::thread::id threadId = std::this_thread::get_id();
+        unsigned int tid = *static_cast<unsigned int*>(static_cast<void*>(&threadId));
+        printf("[xy] %s:%d %s[%d]:%u, maxCheck %d epsError %f\n", __FILE__, __LINE__, __func__, thread_index, tid, maxCheck, epsError);
 
         //int i;
         BranchSt branch;
 
         int checkCount = 0;
         Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
+        // multi-threads checking ?
         DynamicBitset checked(size_);
 
         /* Search once through each tree down to root. */
         //for (i = 0; i < trees_; ++i) {
         //    searchLevel<with_removed>(result, vec, tree_roots_[i], 0, checkCount, maxCheck, epsError, heap, checked);
         //}
-        searchLevel<with_removed>(result, vec, tree_roots_[tid], 0, checkCount, maxCheck, epsError, heap, checked);
+        searchLevel<with_removed>(result, vec, tree_roots_[thread_index], 0, checkCount, maxCheck, epsError, heap, checked);
 
         /* Keep searching other branches from heap until finished. */
         while ( heap->popMin(branch) && (checkCount < maxCheck || !result.full() )) {
@@ -721,7 +722,7 @@ private:
     void searchLevel(ResultSet<DistanceType>& result_set, const ElementType* vec, NodePtr node, DistanceType mindist, int& checkCount, int maxCheck,
                      float epsError, Heap<BranchSt>* heap, DynamicBitset& checked) const
     {
-        //printf("[xy] %s:%d %s with_removed %d, checkCount %d, maxCheck %d, epsError %f\n", __FILE__, __LINE__, __func__, with_removed, checkCount, maxCheck, epsError);
+        printf("[xy] %s:%d %s with_removed %d, checkCount %d, maxCheck %d, epsError %f\n", __FILE__, __LINE__, __func__, with_removed, checkCount, maxCheck, epsError);
         if (result_set.worstDist()<mindist) {
             //			printf("Ignoring branch, too far\n");
             return;
