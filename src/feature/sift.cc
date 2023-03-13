@@ -237,7 +237,7 @@ void FindNearestNeighborsFLANN(
       database_matrix, flann::KDTreeAVX2IndexParams(kNumTreesInForest));
   LOG(INFO) << "[xy] buildIndex kNumTreesInForest: " << kNumTreesInForest;
   index.buildIndex();
-  LOG(INFO) << "[xy] call knnSearch...";
+  //LOG(INFO) << "[xy] call knnSearch... SearchParams 128";
   index.knnSearch(query_matrix, indices_matrix, distances_matrix,
                   num_nearest_neighbors, flann::SearchParams(128));
 

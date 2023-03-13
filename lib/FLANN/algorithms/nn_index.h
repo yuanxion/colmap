@@ -32,6 +32,7 @@
 #define FLANN_NNINDEX_H
 
 #include <vector>
+#include <thread>
 
 #include "FLANN/general.h"
 #include "FLANN/util/matrix.h"
@@ -308,7 +309,7 @@ public:
     		size_t knn,
     		const SearchParams& params) const
     {
-        printf("[xy] %s:%d %s GEMM size_t virtual\n", __FILE__, __LINE__, __func__);
+        //printf("[xy] %s:%d %s GEMM size_t virtual\n", __FILE__, __LINE__, __func__);
     	assert(queries.cols == veclen());
     	assert(indices.rows >= queries.rows);
     	assert(dists.rows >= queries.rows);
@@ -325,7 +326,6 @@ public:
     	int count = 0;
 
     	if (use_heap) {
-            //printf("[xy] %s:%d %s use_heap? yes\n", __FILE__, __LINE__, __func__);
 #pragma omp parallel num_threads(params.cores)
     		{
     			KNNResultSet2<DistanceType> resultSet(knn);
@@ -341,7 +341,7 @@ public:
     		}
     	}
     	else {
-            printf("[xy] %s:%d %s use_heap? no \n", __FILE__, __LINE__, __func__);
+            //printf("[xy] %s:%d %s use_heap? no \n", __FILE__, __LINE__, __func__);
 #pragma omp parallel num_threads(params.cores)
     		{
     			KNNSimpleResultSet<DistanceType> resultSet(knn);
@@ -374,7 +374,7 @@ public:
                                  size_t knn,
                            const SearchParams& params) const
     {
-        printf("[xy] %s:%d %s GEMM int\n", __FILE__, __LINE__, __func__);
+        //printf("[xy] %s:%d %s GEMM int\n", __FILE__, __LINE__, __func__);
     	flann::Matrix<size_t> indices_(new size_t[indices.rows*indices.cols], indices.rows, indices.cols);
     	int result = knnSearch(queries, indices_, dists, knn, params);
 
@@ -402,7 +402,6 @@ public:
     				size_t knn,
     				const SearchParams& params) const
     {
-        printf("[xy] %s:%d %s GEMV size_t\n", __FILE__, __LINE__, __func__);
         assert(queries.cols == veclen());
         bool use_heap;
         if (params.use_heap==FLANN_Undefined) {
@@ -474,7 +473,6 @@ public:
                                  size_t knn,
                            const SearchParams& params) const
     {
-        printf("[xy] %s:%d %s GEMV int\n", __FILE__, __LINE__, __func__);
     	std::vector<std::vector<size_t> > indices_;
     	int result = knnSearch(queries, indices_, dists, knn, params);
 

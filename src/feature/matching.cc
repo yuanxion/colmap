@@ -356,6 +356,7 @@ SiftCPUFeatureMatcher::SiftCPUFeatureMatcher(const SiftMatchingOptions& options,
 
 void SiftCPUFeatureMatcher::Run() {
   SignalValidSetup();
+  std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " " << __func__ << std::endl;
 
   while (true) {
     if (IsStopped()) {
@@ -660,6 +661,7 @@ SiftFeatureMatcher::SiftFeatureMatcher(const SiftMatchingOptions& options,
 
   const int num_threads = GetEffectiveNumThreads(options_.num_threads);
   CHECK_GT(num_threads, 0);
+  std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " " << __func__ << " matchers (num_threads) " << num_threads << std::endl;
 
   std::vector<int> gpu_indices = CSVToVector<int>(options_.gpu_index);
   CHECK_GT(gpu_indices.size(), 0);

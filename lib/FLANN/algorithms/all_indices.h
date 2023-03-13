@@ -171,7 +171,7 @@ inline NNIndex<Distance>*
 #endif
 #ifdef FLANN_USE_AVX2
 	case FLANN_INDEX_KDTREE_AVX2:
-        printf("[xy] %s:%d %s index_type: %d\n", __FILE__, __LINE__, __func__, FLANN_INDEX_KDTREE_AVX2);
+        //printf("[xy] %s:%d %s index_type: %d\n", __FILE__, __LINE__, __func__, FLANN_INDEX_KDTREE_AVX2);
 		nnIndex = create_index_<KDTreeAVX2Index,Distance,ElementType>(dataset, params, distance);
 		break;
 #endif

@@ -51,6 +51,7 @@
 
 #include "FLANN/util/logger.h"
 #include <iostream>
+//#include <thread>
 
 namespace flann
 {
@@ -59,7 +60,6 @@ struct KDTreeAVX2IndexParams : public IndexParams
 {
     KDTreeAVX2IndexParams(int trees = 4)
     {
-        //printf("[xy] %s:%d %s FLANN_INDEX_KDTREE_AVX2: %d\n", __FILE__, __LINE__, __func__, FLANN_INDEX_KDTREE_AVX2);
         (*this)["algorithm"] = FLANN_INDEX_KDTREE_AVX2;
         (*this)["trees"] = trees;
     }
@@ -94,7 +94,6 @@ public:
     KDTreeAVX2Index(const IndexParams& params = KDTreeAVX2IndexParams(), Distance d = Distance() ) :
     	BaseClass(params, d), mean_(NULL), var_(NULL)
     {
-        //printf("[xy] %s:%d %s constructor\n", __FILE__, __LINE__, __func__);
         trees_ = get_param(index_params_,"trees",4);
     }
 
@@ -109,7 +108,7 @@ public:
     KDTreeAVX2Index(const Matrix<ElementType>& dataset, const IndexParams& params = KDTreeAVX2IndexParams(),
                 Distance d = Distance() ) : BaseClass(params,d ), mean_(NULL), var_(NULL)
     {
-        printf("[xy] %s:%d %s constructor\n", __FILE__, __LINE__, __func__);
+        //printf("[xy] %s:%d %s constructor\n", __FILE__, __LINE__, __func__);
         trees_ = get_param(index_params_,"trees",4);
 
         setDataset(dataset);
@@ -135,7 +134,7 @@ public:
      */
     virtual ~KDTreeAVX2Index()
     {
-        printf("[xy] %s:%d %s constructor\n", __FILE__, __LINE__, __func__);
+        //printf("[xy] %s:%d %s constructor\n", __FILE__, __LINE__, __func__);
     	freeIndex();
     }
 
@@ -227,7 +226,7 @@ public:
             size_t knn,
             const SearchParams& params) const
     {
-        printf("[xy] %s:%d %s empty implementation for int indices\n", __FILE__, __LINE__, __func__);
+        //printf("[xy] %s:%d %s empty implementation for int indices\n", __FILE__, __LINE__, __func__);
         return 0;
     }
 
@@ -297,6 +296,7 @@ public:
     }
 #endif
 
+
     /**
      * Find set of nearest neighbors to vec. Their indices are stored inside
      * the result object.
@@ -308,7 +308,6 @@ public:
      */
     void findNeighbors(ResultSet<DistanceType>& result, const ElementType* vec, const SearchParams& searchParams) const
     {
-        printf("[xy] %s:%d %s\n", __FILE__, __LINE__, __func__);
         int maxChecks = searchParams.checks;
         float epsError = 1+searchParams.eps;
 
@@ -325,7 +324,36 @@ public:
         		getNeighbors<true>(result, vec, maxChecks, epsError);
         	}
         	else {
-        		getNeighbors<false>(result, vec, maxChecks, epsError);
+                printf("[xy] %s:%d %s\n", __FILE__, __LINE__, __func__);
+        		//getNeighbors<false>(result, vec, maxChecks, epsError);
+
+                std::vector<std::thread> threads;
+                //std::vector<KNNSimpleResultSet<DistanceType>> results(trees_);
+                int knn = 2;
+                for(int i=0; i<trees_; ++i) {
+                    //threads.emplace_back( std::thread(hello, std::ref(i)) );
+
+                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, std::ref(result), std::ref(vec), maxChecks, epsError) );
+                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(result), std::ref(vec), maxChecks, epsError) );
+                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(result), std::ref(vec), std::ref(maxChecks), std::ref(epsError)) );
+                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(results[std::ref(i)]), std::ref(vec), std::ref(maxChecks), std::ref(epsError)) );
+                    KNNSimpleResultSet<DistanceType> res_t(knn);
+                    //results.emplace_back(res_t);
+                    // //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(res_t), std::ref(vec), std::ref(maxChecks), std::ref(epsError)) );
+
+                    //threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(res_t), std::ref(vec), std::ref(maxChecks), std::ref(epsError), std::ref(i)) );
+                    threads.emplace_back( std::thread(&KDTreeAVX2Index<Distance>::getNeighbors_thread<false>, this, std::ref(res_t), std::ref(vec), std::ref(maxChecks), std::ref(epsError), std::ref(i)) );
+                }
+                for(int i=0; i<trees_; ++i) {
+                    threads[i].join();
+                }
+
+                //int index = 0;
+                ////DistanceType dist;
+                //float dist;
+                ////int index = node->divfeat;
+                ////DistanceType dist = distance_(node->point, vec, veclen_);
+                //result.addPoint(dist, index);
         	}
         }
     }
@@ -651,6 +679,39 @@ private:
 
     }
 
+    //static void hello(int idx) {
+    void hello(int idx) {
+        printf("[xy] %s:%d %s idx %d\n", __FILE__, __LINE__, __func__, idx);
+    }
+
+    template<bool with_removed>
+    //static void getNeighbors_thread(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError) {
+    void getNeighbors_thread(ResultSet<DistanceType>& result, const ElementType* vec, int maxCheck, float epsError, int tid) const
+    {
+        printf("[xy] %s:%d %s, result.size, maxCheck %d epsError %f, tid %d\n", __FILE__, __LINE__, __func__, maxCheck, epsError, tid);
+        return;
+
+        //int i;
+        BranchSt branch;
+
+        int checkCount = 0;
+        Heap<BranchSt>* heap = new Heap<BranchSt>((int)size_);
+        DynamicBitset checked(size_);
+
+        /* Search once through each tree down to root. */
+        //for (i = 0; i < trees_; ++i) {
+        //    searchLevel<with_removed>(result, vec, tree_roots_[i], 0, checkCount, maxCheck, epsError, heap, checked);
+        //}
+        searchLevel<with_removed>(result, vec, tree_roots_[tid], 0, checkCount, maxCheck, epsError, heap, checked);
+
+        /* Keep searching other branches from heap until finished. */
+        while ( heap->popMin(branch) && (checkCount < maxCheck || !result.full() )) {
+            searchLevel<with_removed>(result, vec, branch.node, branch.mindist, checkCount, maxCheck, epsError, heap, checked);
+        }
+
+        delete heap;
+    }
+
     /**
      *  Search starting from a given node of the tree.  Based on any mismatches at
      *  higher levels, all exemplars below this level must have a distance of
@@ -660,6 +721,7 @@ private:
     void searchLevel(ResultSet<DistanceType>& result_set, const ElementType* vec, NodePtr node, DistanceType mindist, int& checkCount, int maxCheck,
                      float epsError, Heap<BranchSt>* heap, DynamicBitset& checked) const
     {
+        //printf("[xy] %s:%d %s with_removed %d, checkCount %d, maxCheck %d, epsError %f\n", __FILE__, __LINE__, __func__, with_removed, checkCount, maxCheck, epsError);
         if (result_set.worstDist()<mindist) {
             //			printf("Ignoring branch, too far\n");
             return;

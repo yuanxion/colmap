@@ -38,6 +38,8 @@
 #include <set>
 #include <vector>
 
+#include <mutex>
+
 namespace flann
 {
 
@@ -120,6 +122,7 @@ public:
      */
     void clear()
     {
+        //std::unique_lock<std::mutex> lock(mutex_);
         worst_distance_ = std::numeric_limits<DistanceType>::max();
         dist_index_[capacity_-1].dist_ = worst_distance_;
         count_ = 0;
@@ -131,6 +134,7 @@ public:
      */
     size_t size() const
     {
+        //std::unique_lock<std::mutex> lock(mutex_);
         return count_;
     }
 
@@ -140,6 +144,7 @@ public:
      */
     bool full() const
     {
+        //std::unique_lock<std::mutex> lock(mutex_);
         return count_==capacity_;
     }
 
@@ -150,6 +155,7 @@ public:
      */
     void addPoint(DistanceType dist, size_t index)
     {
+        //std::unique_lock<std::mutex> lock(mutex_);
     	if (dist>=worst_distance_) return;
 
         if (count_ < capacity_) ++count_;
@@ -179,6 +185,7 @@ public:
      */
     void copy(size_t* indices, DistanceType* dists, size_t num_elements, bool sorted = true)
     {
+        //std::unique_lock<std::mutex> lock(mutex_);
     	size_t n = std::min(count_, num_elements);
     	for (size_t i=0; i<n; ++i) {
     		*indices++ = dist_index_[i].index_;
@@ -188,6 +195,7 @@ public:
 
     DistanceType worstDist() const
     {
+        //std::unique_lock<std::mutex> lock(mutex_);
     	return worst_distance_;
     }
 
@@ -196,6 +204,7 @@ private:
     size_t count_;
     DistanceType worst_distance_;
     std::vector<DistIndex> dist_index_;
+    //mutable std::mutex mutex_;
 };
 
 /**
