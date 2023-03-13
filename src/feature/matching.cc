@@ -356,6 +356,7 @@ SiftCPUFeatureMatcher::SiftCPUFeatureMatcher(const SiftMatchingOptions& options,
 
 void SiftCPUFeatureMatcher::Run() {
   SignalValidSetup();
+  std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " " << __func__ << std::endl;
 
   while (true) {
     if (IsStopped()) {
@@ -660,6 +661,7 @@ SiftFeatureMatcher::SiftFeatureMatcher(const SiftMatchingOptions& options,
 
   const int num_threads = GetEffectiveNumThreads(options_.num_threads);
   CHECK_GT(num_threads, 0);
+  std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " " << __func__ << " matchers (num_threads) " << num_threads << std::endl;
 
   std::vector<int> gpu_indices = CSVToVector<int>(options_.gpu_index);
   CHECK_GT(gpu_indices.size(), 0);
@@ -907,6 +909,7 @@ void ExhaustiveFeatureMatcher::Run() {
   const std::vector<image_t> image_ids = cache_.GetImageIds();
 
   const size_t block_size = static_cast<size_t>(options_.block_size);
+  std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " " << __func__ << " image_ids " << image_ids.size() << ", block_size " << block_size << std::endl;
   const size_t num_blocks = static_cast<size_t>(
       std::ceil(static_cast<double>(image_ids.size()) / block_size));
   const size_t num_pairs_per_block = block_size * (block_size - 1) / 2;

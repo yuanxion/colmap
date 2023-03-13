@@ -44,6 +44,7 @@
 
 #include "FLANN/algorithms/all_indices.h"
 
+
 namespace flann
 {
 
@@ -102,6 +103,7 @@ public:
         : index_params_(params)
     {
         flann_algorithm_t index_type = get_param<flann_algorithm_t>(params,"algorithm");
+        //printf("[xy] %s:%d %s index_type: %d\n", __FILE__, __LINE__, __func__, index_type);
         loaded_ = false;
 
         if (index_type == FLANN_INDEX_SAVED) {
@@ -110,6 +112,7 @@ public:
         }
         else {
         	flann_algorithm_t index_type = get_param<flann_algorithm_t>(params, "algorithm");
+            //printf("[xy] %s:%d %s nnIndex_: %d\n", __FILE__, __LINE__, __func__, nnIndex_);
             nnIndex_ = create_index_by_type<Distance>(index_type, features, params, distance);
         }
     }
@@ -239,6 +242,7 @@ public:
                                  size_t knn,
                            const SearchParams& params) const
     {
+        printf("[xy] %s:%d %s GEMM size_t knn: %d\n", __FILE__, __LINE__, __func__, knn);
     	return nnIndex_->knnSearch(queries, indices, dists, knn, params);
     }
 
@@ -257,6 +261,7 @@ public:
                                  size_t knn,
                            const SearchParams& params) const
     {
+        //printf("[xy] %s:%d %s GEMM int knn: %d\n", __FILE__, __LINE__, __func__, knn);
     	return nnIndex_->knnSearch(queries, indices, dists, knn, params);
     }
 
@@ -274,6 +279,7 @@ public:
                                  size_t knn,
                            const SearchParams& params) const
     {
+        printf("[xy] %s:%d %s GEMV size_t knn: %d\n", __FILE__, __LINE__, __func__, knn);
     	return nnIndex_->knnSearch(queries, indices, dists, knn, params);
     }
 
@@ -292,6 +298,7 @@ public:
                                  size_t knn,
                            const SearchParams& params) const
     {
+        printf("[xy] %s:%d %s GEMV int knn: %d\n", __FILE__, __LINE__, __func__, knn);
     	return nnIndex_->knnSearch(queries, indices, dists, knn, params);
     }
 
