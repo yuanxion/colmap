@@ -49,6 +49,8 @@
 #include "util/misc.h"
 #include "util/opengl_utils.h"
 
+#include "util/nanoflann.hpp"
+
 namespace colmap {
 namespace {
 
@@ -203,6 +205,15 @@ Eigen::MatrixXi ComputeSiftDistanceMatrix(
   return dists;
 }
 
+template<typename T>
+void myprint(T* vec) {
+  const int N =16;
+  for(int i=0; i<N; ++i) {
+    std::cout << vec[i] << " ";
+  }
+  std::cout << std::endl;
+}
+
 void FindNearestNeighborsFLANN(
     const FeatureDescriptors& query, const FeatureDescriptors& database,
     Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>*
@@ -228,6 +239,10 @@ void FindNearestNeighborsFLANN(
 
   flann::Matrix<int> indices_matrix(indices->data(), query.rows(),
                                     num_nearest_neighbors);
+#if 1
+  Timer timer;
+  timer.Start();
+
   std::vector<float> distances_vector(query.rows() * num_nearest_neighbors);
   flann::Matrix<float> distances_matrix(distances_vector.data(), query.rows(),
                                         num_nearest_neighbors);
@@ -236,17 +251,86 @@ void FindNearestNeighborsFLANN(
   index.buildIndex();
   index.knnSearch(query_matrix, indices_matrix, distances_matrix,
                   num_nearest_neighbors, flann::SearchParams(128));
+  std::cout << "flann    ------------------------------------------------- " << StringPrintf(" in %.3fs", timer.ElapsedSeconds()) << std::endl;
 
   for (Eigen::Index query_index = 0; query_index < indices->rows();
        ++query_index) {
+    if(query_index < 4) {
+      auto q = query.row(query_index).cast<int>();
+      std::cout << "q ";
+      for(int i=0; i<48; ++i) std::cout << q[i] << " ";
+      std::cout << "..." << std::endl;
+    }
     for (Eigen::Index k = 0; k < indices->cols(); ++k) {
       const Eigen::Index database_index = indices->coeff(query_index, k);
       distances->coeffRef(query_index, k) =
           query.row(query_index)
               .cast<int>()
               .dot(database.row(database_index).cast<int>());
+      if(query_index < 4) {
+        std::cout << "d ";
+        auto d = database.row(database_index).cast<int>();
+        for(int i=0; i<48; ++i) std::cout << d[i] << " ";
+        std::cout << "... \t[index:" << database_index << " distance:" << distances->coeffRef(query_index, k) << "]" << std::endl;
+      }
     }
   }
+//#else
+  timer.Restart();
+  using my_kd_tree_t = nanoflann::KDTreeEigenMatrixAdaptor<FeatureDescriptors>;
+  std::vector<uint8_t> distances_vector_u8(query.rows() * num_nearest_neighbors);
+  flann::Matrix<uint8_t> distances_matrix_u8(distances_vector_u8.data(), query.rows(),
+                                        num_nearest_neighbors);
+  const size_t dim(128);
+  const int max_leaf = 10;
+  const int query_rows = query.rows();
+  my_kd_tree_t mat_index(dim, std::cref(database), max_leaf);
+
+  for (int i = 0; i < query_rows; ++i) {
+    uint8_t* query_vec = query_matrix[i];
+    uint8_t* distances_ptr = distances_matrix_u8[i];
+    int* indices_ptr = indices_matrix[i];
+
+    std::vector<long int> ret_indexes(kNumNearestNeighbors);
+    std::vector<uint8_t> out_dist_sqr(kNumNearestNeighbors);
+    size_t res = mat_index.index_->knnSearch(query_vec, kNumNearestNeighbors, &ret_indexes[0], &out_dist_sqr[0]);
+
+    size_t finds = std::min(res, kNumNearestNeighbors);
+    for (int j = 0; j < finds; ++j) {
+      *indices_ptr++ = ret_indexes[j];
+      //*distances_ptr++ = out_dist_sqr[j];
+      //if(i < 8)
+      //  std::cout << __FILE__ << ":" << __LINE__ << " query " << i << "/" << query_rows << " finds " << j << "/" << finds << " index " << ret_indexes[j] << " distance " << (int)out_dist_sqr[j] << std::endl;
+    }
+  }
+  std::cout << "nanoflann ------------------------------------------------- " << StringPrintf(" in %.3fs", timer.ElapsedSeconds()) << std::endl;
+
+  for (Eigen::Index query_index = 0; query_index < indices->rows();
+       ++query_index) {
+    if(query_index < 4) {
+      auto q = query.row(query_index).cast<int>();
+      std::cout << "q ";
+      for(int i=0; i<48; ++i) std::cout << q[i] << " ";
+      std::cout << "..." << std::endl;
+    }
+    for (Eigen::Index k = 0; k < indices->cols(); ++k) {
+      const Eigen::Index database_index = indices->coeff(query_index, k);
+      //if(query_index < 8)
+      //  std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " indices " << query_index << "," << k << " database_index " << database_index << std::endl;
+      distances->coeffRef(query_index, k) =
+          query.row(query_index)
+              .cast<int>()
+              .dot(database.row(database_index).cast<int>());
+      if(query_index < 4) {
+        std::cout << "d ";
+        auto d = database.row(database_index).cast<int>();
+        for(int i=0; i<48; ++i) std::cout << d[i] << " ";
+        std::cout << "... \t[index:" << database_index << " distance:" << distances->coeffRef(query_index, k) << "]" << std::endl;
+      }
+    }
+  }
+#endif
+  //std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " " << __func__ << " query " << query.rows() << " finished" << std::endl;
 }
 
 size_t FindBestMatchesOneWayFLANN(
@@ -319,6 +403,7 @@ void FindBestMatchesFLANN(
     const float max_ratio, const float max_distance, const bool cross_check,
     FeatureMatches* matches) {
   matches->clear();
+  //std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " FindBestMatchesFLANN" << std::endl;
 
   std::vector<int> matches12;
   const size_t num_matches12 = FindBestMatchesOneWayFLANN(
@@ -992,6 +1077,7 @@ void MatchSiftFeaturesCPUFLANN(const SiftMatchingOptions& match_options,
   Eigen::Matrix<int, Eigen::Dynamic, Eigen::Dynamic, Eigen::RowMajor>
       distances_2to1;
 
+  //std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " start FindNearestNeighborsFLANN" << std::endl;
   FindNearestNeighborsFLANN(descriptors1, descriptors2, &indices_1to2,
                             &distances_1to2);
   if (match_options.cross_check) {
@@ -999,10 +1085,12 @@ void MatchSiftFeaturesCPUFLANN(const SiftMatchingOptions& match_options,
                               &distances_2to1);
   }
 
+  //std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " start FindBestMatchesFLANN" << std::endl;
   FindBestMatchesFLANN(indices_1to2, distances_1to2, indices_2to1,
                        distances_2to1, match_options.max_ratio,
                        match_options.max_distance, match_options.cross_check,
                        matches);
+  //std::cout << "[xy] " << __FILE__ << ":" << __LINE__ << " start FindBestMatchesFLANN finished" << std::endl;
 }
 
 void MatchSiftFeaturesCPU(const SiftMatchingOptions& match_options,
