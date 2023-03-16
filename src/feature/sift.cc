@@ -240,6 +240,9 @@ void FindNearestNeighborsFLANN(
   flann::Matrix<int> indices_matrix(indices->data(), query.rows(),
                                     num_nearest_neighbors);
 #if 1
+  Timer timer;
+  timer.Start();
+
   std::vector<float> distances_vector(query.rows() * num_nearest_neighbors);
   flann::Matrix<float> distances_matrix(distances_vector.data(), query.rows(),
                                         num_nearest_neighbors);
@@ -248,8 +251,8 @@ void FindNearestNeighborsFLANN(
   index.buildIndex();
   index.knnSearch(query_matrix, indices_matrix, distances_matrix,
                   num_nearest_neighbors, flann::SearchParams(128));
+  std::cout << "flann    ------------------------------------------------- " << StringPrintf(" in %.3fs", timer.ElapsedSeconds()) << std::endl;
 
-  std::cout << "flann    ------------------------------------------------- " << std::endl;
   for (Eigen::Index query_index = 0; query_index < indices->rows();
        ++query_index) {
     if(query_index < 4) {
@@ -268,13 +271,12 @@ void FindNearestNeighborsFLANN(
         std::cout << "d ";
         auto d = database.row(database_index).cast<int>();
         for(int i=0; i<48; ++i) std::cout << d[i] << " ";
-        std::cout << "... [index:" << database_index << " distance:" << distances->coeffRef(query_index, k) << "]" << std::endl;
-      } else {
-        break;
+        std::cout << "... \t[index:" << database_index << " distance:" << distances->coeffRef(query_index, k) << "]" << std::endl;
       }
     }
   }
 //#else
+  timer.Restart();
   using my_kd_tree_t = nanoflann::KDTreeEigenMatrixAdaptor<FeatureDescriptors>;
   std::vector<uint8_t> distances_vector_u8(query.rows() * num_nearest_neighbors);
   flann::Matrix<uint8_t> distances_matrix_u8(distances_vector_u8.data(), query.rows(),
@@ -301,8 +303,8 @@ void FindNearestNeighborsFLANN(
       //  std::cout << __FILE__ << ":" << __LINE__ << " query " << i << "/" << query_rows << " finds " << j << "/" << finds << " index " << ret_indexes[j] << " distance " << (int)out_dist_sqr[j] << std::endl;
     }
   }
+  std::cout << "nanoflann ------------------------------------------------- " << StringPrintf(" in %.3fs", timer.ElapsedSeconds()) << std::endl;
 
-  std::cout << "nanoflann ------------------------------------------------- " << std::endl;
   for (Eigen::Index query_index = 0; query_index < indices->rows();
        ++query_index) {
     if(query_index < 4) {
@@ -323,9 +325,7 @@ void FindNearestNeighborsFLANN(
         std::cout << "d ";
         auto d = database.row(database_index).cast<int>();
         for(int i=0; i<48; ++i) std::cout << d[i] << " ";
-        std::cout << "... [index:" << database_index << " distance:" << distances->coeffRef(query_index, k) << "]" << std::endl;
-      } else {
-        break;
+        std::cout << "... \t[index:" << database_index << " distance:" << distances->coeffRef(query_index, k) << "]" << std::endl;
       }
     }
   }
