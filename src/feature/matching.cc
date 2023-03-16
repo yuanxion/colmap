@@ -907,8 +907,8 @@ void ExhaustiveFeatureMatcher::Run() {
 
   const std::vector<image_t> image_ids = cache_.GetImageIds();
 
-  //const size_t block_size = static_cast<size_t>(options_.block_size);
-  const size_t block_size(53);
+  const size_t block_size = static_cast<size_t>(options_.block_size);
+  //const size_t block_size(53);
   const size_t num_blocks = static_cast<size_t>(
       std::ceil(static_cast<double>(image_ids.size()) / block_size));
   const size_t num_pairs_per_block = block_size * (block_size - 1) / 2;
